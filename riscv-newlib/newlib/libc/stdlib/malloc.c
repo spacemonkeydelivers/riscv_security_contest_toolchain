@@ -155,19 +155,67 @@ Supporting OS subroutines required: <<sbrk>>.  */
 #include <reent.h>
 #include <stdlib.h>
 #include <malloc.h>
+#include <stdio.h>
 
 #ifndef _REENT_ONLY
+
+/*
+void* _malloc_r(_reent*, size_t) {
+
+}
+void _free_r(_reent*, void*) {
+}
+*/
+
+#define GRANULE_SIZE 16
+int sec_tag = 1; // it would be better to have an initialization routine
+static unsigned  __sec_generate_tag() {
+    // tag #15 is reserved for OS code
+    do {
+        sec_tag = (sec_tag + 1) & 0xff;
+    } while (sec_tag == 0 || sec_tag == 15);
+    return sec_tag;
+}
+static unsigned __sec_protect_ptr(void* ptr, unsigned size) {
+    unsigned tag = __sec_generate_tag();
+    unsigned raw_ptr = (unsigned)ptr;
+
+    unsigned untagged_ptr = (raw_ptr & (~(0xf << 26)));
+    unsigned granules_to_tag = size / GRANULE_SIZE + ((size % GRANULE_SIZE) ? 1 : 0);
+    unsigned address_to_tag = untagged_ptr;
+    for (unsigned i = 0; i < granules_to_tag; ++i) {
+        __asm__ __volatile__(
+                "st %[tag], 0(%[address])"
+                :
+                : [tag]"r"(tag), [address]"r"(address_to_tag)
+                : "t0", "memory");
+        address_to_tag += 16;
+    }
+    unsigned result =  untagged_ptr | (tag << 26);
+    return result;
+}
+unsigned __sec_untag_ptr(void* ptr) {
+    return ((unsigned)ptr) & ((1 << 26) - 1);
+}
 
 void *
 malloc (size_t nbytes)		/* get a block */
 {
-  return _malloc_r (_REENT, nbytes);
+  void * raw_ptr =  _malloc_r (_REENT, nbytes);
+  if (!raw_ptr) {
+      return (void*)0;
+  }
+  void * protected_ptr = (void*)__sec_protect_ptr(raw_ptr, nbytes);
+  printf("s_malloc: ptr before %p, ptr after %p; [%d]?\n", raw_ptr, protected_ptr, nbytes);
+  return protected_ptr;
 }
 
 void
 free (void *aptr)
 {
-  _free_r (_REENT, aptr);
+    void* raw_ptr = (void*)__sec_untag_ptr(aptr);
+    printf("s_free: ptr before %p, ptr_after %p\n", aptr, raw_ptr);
+    _free_r (_REENT, raw_ptr);
 }
 
 #endif
