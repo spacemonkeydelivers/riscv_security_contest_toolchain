@@ -1393,6 +1393,8 @@ nextchunk-> +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
 
 
 
+#define MALLOC_ALIGNMENT 16
+
 /*  sizes, alignments */
 
 #define SIZE_SZ                (sizeof(INTERNAL_SIZE_T))
