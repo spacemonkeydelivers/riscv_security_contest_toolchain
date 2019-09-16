@@ -159,15 +159,31 @@ Supporting OS subroutines required: <<sbrk>>.  */
 
 #ifndef _REENT_ONLY
 
+/*
+static inline unsigned soc_hwrand(void) {
+    unsigned result = 0;
+    __asm__ __volatile__(
+            "csrr %[result], rnd\n\t"
+            : [result]"=r"(result)
+            :
+            : );
+    return result;
+}
+*/
+
 #define GRANULE_SIZE 16
 int sec_tag = 1; // it would be better to have an initialization routine
 static unsigned  __sec_generate_tag() {
     // tag #15 is reserved for OS code
     do {
+        // NOTE: instead of incrementing, we could call soc_hwrand function
+        // but for demonstration purposes we decided to use a simpler approach
         sec_tag = (sec_tag + 1) & 0xff;
+        // sec_tag = soc_hwrand();
     } while (sec_tag == 0 || sec_tag == 15);
     return sec_tag;
 }
+
 static unsigned __sec_protect_ptr(void* ptr, unsigned size) {
     unsigned tag = __sec_generate_tag();
     unsigned raw_ptr = (unsigned)ptr;
