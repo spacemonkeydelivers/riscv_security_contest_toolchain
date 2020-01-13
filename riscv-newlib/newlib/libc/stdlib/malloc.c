@@ -188,7 +188,7 @@ static unsigned __sec_protect_ptr(void* ptr, unsigned size) {
     unsigned tag = __sec_generate_tag();
     unsigned raw_ptr = (unsigned)ptr;
 
-    unsigned untagged_ptr = (raw_ptr & (~(0xf << 26)));
+    unsigned untagged_ptr = (raw_ptr & (~(0xf << 28)));
     unsigned granules_to_tag = size / GRANULE_SIZE + ((size % GRANULE_SIZE) ? 1 : 0);
     unsigned address_to_tag = untagged_ptr;
     for (unsigned i = 0; i < granules_to_tag; ++i) {
@@ -199,11 +199,11 @@ static unsigned __sec_protect_ptr(void* ptr, unsigned size) {
                 : "t0", "memory");
         address_to_tag += 16;
     }
-    unsigned result =  untagged_ptr | (tag << 26);
+    unsigned result =  untagged_ptr | (tag << 28);
     return result;
 }
 unsigned __sec_untag_ptr(void* ptr) {
-    return ((unsigned)ptr) & ((1 << 26) - 1);
+    return ((unsigned)ptr) & ((1 << 28) - 1);
 }
 
 #define alignto(p, bits)      (((p) >> bits) << bits)
